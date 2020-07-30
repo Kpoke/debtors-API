@@ -29,30 +29,33 @@ app.post("/api/signup", async (req, res) => {
     const token = jwt.sign({ userid: user._id }, process.env.USERKEY);
     res.status(201).send({ token, username: user.username });
   } catch (e) {
-    res.status(400).send(e);
+    res.status(400).send(e.message);
   }
 });
 
 app.post("/api/login", async (req, res) => {
   let username = req.body.username;
   let password = req.body.password;
+  try {
+    if (!username || !password) {
+      throw new Error("Must provide Username or Password");
+    }
 
-  if (!username || !password) {
-    return res.status(400).send({ error: "Must provide Username or Password" });
+    let user = await User.findOne({ username });
+    if (!user) {
+      throw new Error("Invalid Username or Password");
+    }
+
+    let flag = await bcrypt.compare(password, user.password);
+    if (!flag) {
+      throw new Error("Invalid Username or Password");
+    }
+
+    const token = jwt.sign({ userId: user._id }, process.env.USERKEY);
+    res.send({ token, username: user.username });
+  } catch (e) {
+    res.status(400).send(e.message);
   }
-
-  let user = await User.findOne({ username });
-  if (!user) {
-    return res.status(400).send({ error: "Invalid Username or Password" });
-  }
-
-  let flag = await bcrypt.compare(password, user.password);
-  if (!flag) {
-    return res.status(400).send({ error: "Invalid Username or Password" });
-  }
-
-  const token = jwt.sign({ userId: user._id }, process.env.USERKEY);
-  res.send({ token, username: user.username });
 });
 
 app.get("/api/debtors", auth, async (req, res) => {
@@ -103,7 +106,7 @@ app.post("/api/debtors/new", auth, async (req, res) => {
     req.user.save();
     res.status(201).send(debtor);
   } catch (e) {
-    res.status(400).send(e);
+    res.status(400).send(e.message);
   }
 });
 
